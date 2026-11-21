@@ -128,6 +128,11 @@ CI test runs. The sample cards do not send messages.
 
 ### Failure triage
 
+The [controlled maintenance guide](docs/AI_MAINTENANCE.md) explains how to
+reproduce three real Cypress failures, inspect an evidence-backed selector patch,
+validate it, and approve it explicitly. See the [baseline audit](docs/AI_MAINTENANCE_AUDIT.md)
+for the existing tool and integration behavior.
+
 `analysis.json` records failed Gherkin steps, bounded error excerpts, screenshot paths,
 a likely category, and a suggested verification step. The default classification is
 deterministic and works offline. To add model assistance, set `RELAY_MODEL_COMMAND` to an

@@ -101,9 +101,10 @@ const reports = await Promise.allSettled([
       artifactUrl: runUrl,
     }),
   ),
-  analyze(report, { modelCommand: process.env.RELAY_MODEL_COMMAND }).then(
-    (value) => writeJson('analysis.json', value),
-  ),
+  analyze(report, {
+    directory,
+    modelCommand: process.env.RELAY_MODEL_COMMAND,
+  }).then((value) => writeJson('analysis.json', value)),
   renderHtml(report, directory),
   renderPdf(report, directory),
   writeFile(join(directory, 'summary.md'), markdown),

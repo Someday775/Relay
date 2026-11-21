@@ -1,3 +1,4 @@
+import { appendFileSync, mkdirSync } from 'node:fs';
 import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { join } from 'node:path';
@@ -32,6 +33,15 @@ export default defineConfig({
         createBundler({ plugins: [createEsbuildPlugin(config)] }),
       );
       on('task', {
+        recordFailureDom(snapshot: unknown) {
+          if (!process.env.RELAY_REPORT_DIRECTORY) return null;
+          mkdirSync(reportDirectory, { recursive: true });
+          appendFileSync(
+            join(reportDirectory, 'failure-dom.ndjson'),
+            JSON.stringify(snapshot) + '\n',
+          );
+          return null;
+        },
         resetRelay() {
           app = createApp();
           return null;

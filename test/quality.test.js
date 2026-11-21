@@ -58,3 +58,20 @@ test('a runner failure without Cucumber output remains failed', async () => {
   assert.equal(report.counts.total, 0);
   assert.equal((await analyze(report)).findings[0].category, 'Runner or setup');
 });
+
+test('selector policy preserves the business assertion and rejects other edits', async () => {
+  const { applySelector, editableFile, selectorChange } = await import('../quality/maintenance/policy.mjs');
+  const before = '<nav id="projects" data-testid="projects" aria-label="Projects">';
+  const after = '<nav id="projects" data-testid="project-navigation" aria-label="Projects">';
+  const candidate = selectorChange(before, after);
+  assert.deepEqual(candidate, { file: editableFile, from: 'projects', to: 'project-navigation' });
+  assert.equal(selectorChange(before, after.replace(' aria-label="Projects"', '')), null);
+  assert.equal(selectorChange(before, after + '\n' + after), null);
+
+  const source = "export const projectList = () => byTestId('projects');\nexpect(result).to.equal(403);\n";
+  assert.equal(applySelector(source, candidate),
+    "export const projectList = () => byTestId('project-navigation');\nexpect(result).to.equal(403);\n");
+  assert.throws(() => applySelector(source, { ...candidate, file: 'server.js' }), /allowlist/);
+  assert.throws(() => applySelector(source, { ...candidate, to: "x'); cy.exec('anything" }), /allowlist/);
+  assert.throws(() => applySelector(source + source, candidate), /exact project-list helper/);
+});

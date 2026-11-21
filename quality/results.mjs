@@ -45,6 +45,7 @@ export function normalize(features, metadata, directory) {
         return {
           id: feature.uri + ':' + (scenario.id ?? scenario.name),
           feature: feature.name,
+          uri: feature.uri,
           name: scenario.name,
           status,
           steps,

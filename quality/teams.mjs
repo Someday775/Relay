@@ -93,12 +93,12 @@ export function teamsCard(report, { reportUrl, artifactUrl } = {}) {
   };
 }
 
-export async function publishCard(url, payload) {
+export async function publishCard(url, payload, send = fetch) {
   if (new URL(url).protocol !== 'https:')
     throw new Error('The Teams endpoint must use HTTPS.');
   let response;
   try {
-    response = await fetch(url, {
+    response = await send(url, {
       method: 'POST',
       redirect: 'error',
       signal: AbortSignal.timeout(15000),

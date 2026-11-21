@@ -26,7 +26,7 @@ async function prepare(root, directory) {
     candidates.some((candidate) => candidate.to !== candidates[0].to)
   ) {
     throw new Error(
-      'No policy-eligible selector correction. Review analysis.json.',
+      'No policy-eligible selector correction. Review the failure analysis linked from index.html.',
     );
   }
   const candidate = candidates[0];

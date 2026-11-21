@@ -1,5 +1,5 @@
 import { readdirSync } from 'node:fs';
-import { join, relative } from 'node:path';
+import { join, relative, sep } from 'node:path';
 
 function files(directory) {
   try {
@@ -13,7 +13,12 @@ function files(directory) {
   }
 }
 
-export function normalize(features, metadata, directory) {
+export function normalize(
+  features,
+  metadata,
+  directory,
+  screenshotPrefix = '',
+) {
   const screenshots = files(join(directory, 'screenshots'));
   const scenarios = features.flatMap((feature) =>
     (feature.elements ?? [])
@@ -61,7 +66,11 @@ export function normalize(features, metadata, directory) {
                 path.includes(feature.uri.split('/').at(-1)) &&
                 path.includes(scenario.name),
             )
-            .map((path) => relative(directory, path).split('\\').join('/')),
+            .map((path) =>
+              [screenshotPrefix, relative(directory, path).split(sep).join('/')]
+                .filter(Boolean)
+                .join('/'),
+            ),
         };
       }),
   );
@@ -87,6 +96,6 @@ export function summary(report) {
 - Duration: ${(report.durationMs / 1000).toFixed(1)} s
 - Scenarios: ${counts.total} total · ${counts.passed} passed · ${counts.failed} failed · ${counts.skipped} skipped
 
-Download the run artifact and open \`index.html\` or \`report.pdf\` for Gherkin steps and diagnostics.
+Download the run artifact and open \`index.html\` for Gherkin steps and diagnostics.
 `;
 }

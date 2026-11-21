@@ -26,6 +26,11 @@ jobs:
       - name: Run Cypress and generate reports
         id: cypress
         if: ${{ !cancelled() && steps.install.outcome != 'failure' }}
+        env:
+          RELAY_REPORT_PDF: ${{ vars.RELAY_REPORT_PDF }}
+          RELAY_ARCHIVE_TEAMS_CARD: ${{ vars.RELAY_ARCHIVE_TEAMS_CARD }}
+          RELAY_REPORT_VERBOSE: ${{ vars.RELAY_REPORT_VERBOSE }}
+          RELAY_ARTIFACT_RETENTION_DAYS: ${{ vars.RELAY_ARTIFACT_RETENTION_DAYS }}
         run: npm run test:e2e
       - name: Upload run archive
         if: ${{ always() && steps.cypress.outputs.directory != '' }}
@@ -35,9 +40,9 @@ jobs:
           name: ${{ steps.cypress.outputs.archive }}
           path: ${{ steps.cypress.outputs.directory }}
           if-no-files-found: error
-          retention-days: 30
+          retention-days: ${{ steps.cypress.outputs.retention }}
       - name: Publish PDF to SharePoint
-        if: ${{ always() && steps.archive.outcome == 'success' && github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && vars.SP_DRIVE_ID != '' }}
+        if: ${{ always() && steps.archive.outcome == 'success' && github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && vars.SP_DRIVE_ID != '' && steps.cypress.outputs.pdf == 'true' }}
         id: sharepoint
         env:
           REPORT_DIRECTORY: ${{ steps.cypress.outputs.directory }}

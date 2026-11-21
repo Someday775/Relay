@@ -72,16 +72,51 @@ Cucumber uses the Badeball preprocessor with esbuild. The lockfile pins the comp
 
 ### Reports and GitHub Actions
 
-Open `reports/<UTC date>/<run ID>/index.html` after a run. The directory also contains
-`report.pdf`, `results.json`, `teams.json`, `analysis.json`, the execution summary,
-Cypress logs, and any failure screenshots. When Cucumber emits results, its JSON is
-retained and processed by Multiple Cucumber HTML Reporter for a second feature view.
+Open `reports/<UTC date>/<run ID>/index.html` after a run. It shows the run
+summary, features, scenarios, Gherkin steps, and linked failure evidence.
+`results.json` is the normalized source for the HTML, optional PDF, CI summary,
+Teams notifications, and maintenance tools.
 
-The GitHub workflow runs on pushes and pull requests. Manual runs are available once the
-workflow is on the default branch. It retains each dated run artifact for 30 days and writes a
-summary even if Cypress fails. A runner startup failure has zero completed scenarios and
-includes the Cypress log. Reporting keeps the original Cypress exit code. Stakeholders can
-read an extracted artifact locally. Downloading private GitHub artifacts requires repository access.
+```text
+<run>/
+  index.html
+  results.json
+  diagnostics/             # failed or incomplete runs, or verbose capture
+    analysis.json          # failed or incomplete runs only
+    cypress.log
+    failure-dom.ndjson     # when Cypress captures failed UI state
+    screenshots/           # when Cypress captures images
+```
+
+The default passing archive contains exactly two files. Cucumber JSON is consumed
+from temporary storage. The GitHub Actions summary is written directly to the job
+summary and Teams cards are generated from results when publishing.
+
+| Setting | Effect |
+| --- | --- |
+| `RELAY_REPORT_PDF=1` | Generates `report.pdf` and links it from HTML. Required for the optional SharePoint PDF upload. |
+| `RELAY_REPORT_VERBOSE=1` | Keeps raw Cucumber JSON under `diagnostics/` when available, and retains logs and any browser evidence even on a successful run. |
+| `RELAY_ARCHIVE_TEAMS_CARD=1` | Saves the generated payload as `teams.json` for inspection. The normal publisher works without it. |
+| `RELAY_ARTIFACT_RETENTION_DAYS` | Sets GitHub Actions artifact retention to an integer from 1–90 (default 30), subject to the repository or organization limit. Local runs are kept until you remove them. |
+
+Set these as environment variables locally, or as GitHub Actions repository
+variables for CI. For example, `RELAY_REPORT_PDF=1 npm run test:e2e` enables
+PDF export for one local run.
+
+The workflow archives successful and failed runs. A startup failure can have zero
+completed scenarios and still retain the Cypress log and analysis. The runner
+preserves Cypress's nonzero exit code. An exit code of zero with missing or invalid
+Cucumber results is treated as a reporting failure. Incomplete runs with skipped
+scenarios are marked separately in JSON and include diagnostics. Downloading
+private GitHub artifacts requires repository access.
+
+**Migration:** Read Gherkin steps from `results.json` or open `index.html`.
+`summary.md` and the secondary Cucumber HTML report have been removed.
+Use `results.json.artifacts` and scenario screenshot paths to find optional
+files. Paths are relative to the archive root. New diagnostic files live under
+`diagnostics/`. The maintenance tools also read diagnostics from older archives
+that stored those files at the root. SharePoint users should set
+`RELAY_REPORT_PDF=1` in GitHub to continue publishing PDFs.
 
 To compare two downloaded or local runs:
 
@@ -103,7 +138,7 @@ available in a client that cannot render the toggle.
 To publish, create a Teams **Workflows** webhook that posts an Adaptive Card to a channel
 or chat. Set its URL as the GitHub Actions secret `TEAMS_WEBHOOK_URL`. The adapter sends
 the Teams message envelope over HTTPS only on trusted main-branch runs. Without a webhook
-the card is generated and archived locally or in CI. This configuration uses the Workflows
+the publisher skips delivery. Use the sample cards or enable card archiving for local inspection. This configuration uses the Workflows
 trigger mode that accepts requests through the secret URL. For tenant-authenticated
 triggers use an adapter with the auth method required by your tenant.
 See [Teams Workflows webhooks](https://learn.microsoft.com/microsoftteams/platform/webhooks-and-connectors/how-to/add-incoming-webhook)
@@ -114,7 +149,7 @@ stakeholders who have no GitHub account, configure one of these destinations:
 
 - Set `REPORT_PDF_URL` to an HTTPS PDF URL hosted in storage your intended readers can
   access. A fixed URL refers to the report served by that location.
-- Enable SharePoint upload with GitHub variables `SP_TENANT_ID`, `SP_CLIENT_ID`,
+- Enable PDF export with `RELAY_REPORT_PDF=1`, then configure GitHub variables `SP_TENANT_ID`, `SP_CLIENT_ID`,
   `SP_DRIVE_ID` and secret `SP_CLIENT_SECRET`. Give the Entra application Microsoft
   Graph application permission `Sites.Selected`, obtain admin consent, and grant that
   application write access on the target SharePoint site. Set the drive ID to the target
@@ -133,8 +168,8 @@ reproduce three real Cypress failures, inspect an evidence-backed selector patch
 validate it, and approve it explicitly. See the [baseline audit](docs/AI_MAINTENANCE_AUDIT.md)
 for the existing tool and integration behavior.
 
-`analysis.json` records failed Gherkin steps, bounded error excerpts, screenshot paths,
-a likely category, and a suggested verification step. The default classification is
+`diagnostics/analysis.json` records failed steps, concise findings, and relative references
+to screenshots, logs, DOM evidence, and scenario details in `results.json`. The default classification is
 deterministic and works offline. To add model assistance, set `RELAY_MODEL_COMMAND` to an
 executable adapter you trust. The adapter reads the triage prompt and evidence on stdin and
 writes analysis as plain text on stdout. Run it with the report pipeline or separately:

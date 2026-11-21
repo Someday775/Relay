@@ -1,3 +1,4 @@
+import { teamsCard } from '../teams.mjs';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
@@ -99,9 +100,9 @@ assert.ok(
 assert.equal(run.report.status, 'FAILED');
 assert.equal(run.report.exitCode, run.code);
 const analysis = JSON.parse(
-  await readFile(join(directory, 'analysis.json'), 'utf8'),
+  await readFile(join(directory, 'diagnostics', 'analysis.json'), 'utf8'),
 );
-const card = JSON.parse(await readFile(join(directory, 'teams.json'), 'utf8'));
+const card = teamsCard(run.report);
 assert.match(card.attachments[0].content.body[0].text, /FAILED/);
 assert.ok(
   analysis.findings.some((finding) => finding.category === example.category),

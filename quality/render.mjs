@@ -52,10 +52,17 @@ export async function renderHtml(report, directory) {
       .join('')}</section>`,
     )
     .join('');
-  const diagnostics =
-    report.status === 'FAILED'
-      ? '<p>See <a href="cypress.log">Cypress output</a> for browser and runner diagnostics.</p>'
-      : '';
+  const artifacts = report.artifacts ?? {};
+  const links = [
+    ['JSON', 'results.json'],
+    ['PDF', artifacts.pdf],
+    ['Failure analysis', artifacts.analysis],
+    ['Cypress output', artifacts.log],
+    ['Teams card', artifacts.teams],
+  ].filter(([, path]) => path);
+  const diagnosticNotice = report.incompleteReason
+    ? `<p>${escape(report.incompleteReason)}</p>`
+    : '';
   const html = `<!doctype html><html lang="en"><meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Relay quality report</title>
@@ -72,8 +79,9 @@ export async function renderHtml(report, directory) {
   <dl>${fields(report)
     .map(([key, value]) => `<dt>${escape(key)}</dt><dd>${escape(value)}</dd>`)
     .join('')}</dl>
-  <nav aria-label="Report files"><a href="report.pdf">PDF</a><a href="results.json">JSON</a><a href="teams.json">Teams card</a><a href="analysis.json">Failure analysis</a>
-  ${report.scenarios.length ? '<a href="cucumber/index.html">Cucumber report</a>' : ''}</nav>${diagnostics}</header>
+  <nav aria-label="Report files">${links
+    .map(([label, path]) => `<a href="${escape(encodeURI(path))}">${label}</a>`)
+    .join(' ')}</nav>${diagnosticNotice}</header>
   ${features || '<p>No completed scenario results were produced.</p>'}</main></html>`;
   await writeFile(join(directory, 'index.html'), html);
 }
@@ -106,7 +114,9 @@ export async function renderPdf(report, directory) {
   if (!report.scenarios.length)
     pdf
       .moveDown()
-      .text('No scenario results. See cypress.log in the run archive.');
+      .text(
+        'No scenario results. See the run archive for available diagnostics.',
+      );
   for (const [feature, scenarios] of Map.groupBy(
     report.scenarios,
     (scenario) => scenario.feature,

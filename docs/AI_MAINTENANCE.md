@@ -34,12 +34,13 @@ and failed status stay in the archived results and Teams card.
 | `selector` | The project navigation test ID changes from `projects` to `project-navigation`. Its ID and other markup stay the same. | Selector drift. An inspectable one-line patch is validated by rerunning all four features with the app change still present. The failed run remains a separate artifact. |
 | `environment` | Cypress receives a nonexistent binary path and exits before loading a scenario. | Environment failure, with runner log evidence and no test patch. |
 
-Open `failed-run/index.html` and follow **Failure analysis** to `analysis.json`.
+Open `failed-run/index.html` and follow **Failure analysis** to `diagnostics/analysis.json`.
 The JSON records the classification, confidence, uncertainty, recommended next
 check, and whether the failure is eligible for a test-code proposal. Findings
-include Gherkin steps, Cypress errors, matched source excerpts, selector data,
-and screenshot paths with PNG dimensions when available. The report also
-includes excerpts from recent Git changes and the Cypress log. DOM diagnostics
+reference Gherkin steps in `results.json`, and include concise Cypress errors,
+source locations, selector data and screenshot paths with PNG dimensions when
+available. The analysis links to the Cypress log and DOM diagnostic instead of
+embedding copies. Git evidence records the commit and changed filenames. DOM diagnostics
 contain only element tag, ID, test ID, and rendered state. Screenshots remain
 available for human inspection. The text adapter does not interpret image pixels.
 

@@ -57,10 +57,23 @@ async function logTail(path) {
 }
 
 export async function collectEvidence(directory, root = process.cwd()) {
-  const log = directory ? await logTail(join(directory, 'cypress.log')) : '';
-  const rawDom = directory
-    ? await optional(join(directory, 'failure-dom.ndjson'))
-    : '';
+  // Older archives kept diagnostics at the archive root.
+  const readDiagnostic = async (file, reader) => {
+    if (!directory) return { text: '', path: null };
+    for (const path of ['diagnostics/' + file, file]) {
+      const text = await reader(join(directory, path));
+      if (text) return { text, path };
+    }
+    return { text: '', path: null };
+  };
+  const { text: log, path: logPath } = await readDiagnostic(
+    'cypress.log',
+    logTail,
+  );
+  const { text: rawDom, path: domPath } = await readDiagnostic(
+    'failure-dom.ndjson',
+    optional,
+  );
   const dom = rawDom.split('\n').flatMap((line) => {
     try {
       return [JSON.parse(line)];
@@ -121,6 +134,8 @@ export async function collectEvidence(directory, root = process.cwd()) {
   );
   return {
     dom,
+    domPath,
+    logPath,
     selector,
     source,
     git: {
@@ -148,7 +163,7 @@ async function screenshotEvidence(directory, path) {
   const result = { path, available: false };
   if (
     !directory ||
-    !/^screenshots\/[^\\]+\.png$/.test(path) ||
+    !/^(?:diagnostics\/)?screenshots\/[^\\]+\.png$/.test(path) ||
     path.split('/').some((part) => part === '..' || part === '.')
   )
     return result;
@@ -156,7 +171,14 @@ async function screenshotEvidence(directory, path) {
     const root = await realpath(directory);
     const file = await realpath(join(root, path));
     if (
-      !file.startsWith(join(root, 'screenshots') + sep) ||
+      !file.startsWith(
+        join(
+          root,
+          path.startsWith('diagnostics/')
+            ? 'diagnostics/screenshots'
+            : 'screenshots',
+        ) + sep,
+      ) ||
       !(await lstat(file)).isFile()
     )
       return result;

@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Relay — Project workspace</title>
+  <link rel="stylesheet" href="/style.css">
+  <script type="module" src="/app.js"></script>
+</head>
+<body>
+  <header class="top"><span class="logo" aria-hidden="true">R</span><strong>Relay</strong><div id="identity" hidden><span id="user"></span><button id="logout" class="quiet">Sign out</button></div></header>
+  <p id="notice" role="status"></p>
+  <main>
+    <section id="login" class="login card" hidden>
+      <h1>Sign in to Relay</h1>
+      <form id="login-form">
+        <label>Email<input name="email" type="email" autocomplete="username" required></label>
+        <label>Password<input name="password" type="password" autocomplete="current-password" required></label>
+        <p class="error" role="alert"></p>
+        <button class="primary">Sign in</button>
+      </form>
+      <div class="demo"><strong>Demo accounts</strong><p>Both use the password <code>relay-demo</code>.</p>
+        <button class="quiet demo-account" data-email="member@relay.test">Use member credentials</button>
+        <button class="quiet demo-account" data-email="admin@relay.test">Use admin credentials</button>
+      </div>
+    </section>
+    <div id="workspace" class="workspace" hidden>
+      <aside class="sidebar">
+        <div class="section-top"><h2>Projects</h2><button id="new-project" class="quiet">+ New</button></div>
+        <nav id="projects" aria-label="Projects"></nav>
+      </aside>
+      <section class="content" aria-labelledby="project-title">
+        <div class="project-heading">
+          <div><h1 id="project-title"></h1><p id="project-description"></p></div>
+          <button id="new-task" class="primary">+ New task</button>
+        </div>
+        <section id="tasks-panel" class="card" aria-labelledby="tasks-title">
+          <div class="task-heading"><h2 id="tasks-title">Tasks</h2><span id="task-count" role="status"></span></div>
+          <div class="filters">
+            <label>Search tasks<input type="search" id="search" placeholder="Search title or description"></label>
+            <label>Status<select id="filter"><option value="">All statuses</option></select></label>
+          </div>
+          <ul id="tasks"></ul>
+          <p id="empty" class="empty" hidden></p>
+        </section>
+      </section>
+    </div>
+  </main>
+  <dialog id="editor" aria-labelledby="editor-title">
+    <form id="editor-form">
+      <h2 id="editor-title"></h2>
+      <label><span id="name-label"></span><input name="title" required></label>
+      <label>Description<textarea name="description" rows="4" maxlength="500"></textarea></label>
+      <label id="status-field">Status<select name="status"></select></label>
+      <p class="error" role="alert"></p>
+      <div class="actions"><button type="button" id="cancel" class="quiet">Cancel</button><button id="save" class="primary">Save</button></div>
+    </form>
+  </dialog>
+</body>
+</html>

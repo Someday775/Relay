@@ -1,42 +1,40 @@
-# Relay
+# Relay | Quality engineering portfolio
 
-Relay is a small project and task management application for use as a system under test. It uses Node.js 22+, built-in Node modules, plain HTML/CSS/JavaScript, and a local JSON data file. No dependency installation, external services, or secrets are required.
+Relay is a small project and task management app used to demonstrate how a team
+can verify business-critical workflows on every change and investigate failures
+without weakening its tests. The demo covers a realistic collaboration flow:
+share a project, assign work, verify permissions, and revoke access without
+leaving orphaned assignments.
 
-## Run locally
+## 1. Core QA Automation
 
-From the directory containing this README:
+**Implemented and locally validated.** The core suite runs independently of
+AI tools, GitHub credentials, and paid reporting services.
 
-```sh
-npm start
-```
+| Capability | What it demonstrates |
+| --- | --- |
+| Cypress, TypeScript, and Cucumber | 14 [Gherkin scenarios](cypress/e2e/features) cover authentication, permissions, collaboration, task persistence, validation, and filtering. |
+| Test data management | Cypress runs the real Node HTTP app on an ephemeral loopback port. Each scenario starts with fresh seeded data and sessions. API setup uses the same service as the browser. |
+| Node integration tests | Exercise authentication, access control, persistence, and the reporting pipeline without launching a browser. |
+| CI and reporting | [GitHub Actions](.github/workflows/ci.yml) runs lint, type checks, Node tests, and Cypress on pushes and pull requests. It uploads run artifacts even after a Cypress failure and preserves the test exit code. |
+| Optional notifications and storage | PDF export is locally validated. Teams card generation and SharePoint upload logic are covered with mocks. Live delivery requires separate tenant configuration and validation. |
 
-Open [http://127.0.0.1:3000](http://127.0.0.1:3000). The sign-in form can fill a demo account for you.
+### Architecture
 
-| Role | Email | Password | Access |
-| --- | --- | --- | --- |
-| Standard user | member@relay.test | relay-demo | Create projects and work with tasks in owned or shared projects |
-| Collaborator demo | collaborator@relay.test | relay-demo | Starts with no projects and can work in projects shared with them |
-| Admin | admin@relay.test | relay-demo | Create projects and work with tasks in any project |
+- **System under test:** A Node.js HTTP API, plain JavaScript browser UI, and optional
+  local JSON persistence. [Seed data](seed.js) includes example users, projects, and tasks.
+- **Automation:** [Feature files](cypress/e2e/features) describe behavior.
+  [Step definitions](cypress/e2e/step_definitions) use shared
+  [Cypress helpers](cypress/pages) and [API setup](cypress/api).
+  [Cypress configuration](cypress.config.ts) owns the test server and resets data.
+- **Reporting:** [The runner](quality/run.mjs) normalizes Cucumber output into
+  `results.json`. The HTML report, CI summary, optional PDF, and Teams card
+  use that same data.
 
-The member starts with **Website refresh** and three tasks, one in each status. The admin sees that project and **Customer onboarding**, which starts with one task. Both roles can create, edit, and change task status within their accessible projects. Owners and admins can manage access. Task assignees must be the project owner or an added collaborator. Removing a collaborator revokes their project access and clears their assignments. Search matches the title and description of tasks in the selected project. Search, status, and assignee filters can be combined.
+### Run the checks
 
-## Data and tests
-
-Relay writes changes to `.data/workspace.json`. With the server stopped, remove that file and restart to restore the original seed. Set `RELAY_DATA_FILE` to use an independent file, or set `PORT` to change the port. Sessions are held in memory and expire after eight hours or when the server stops.
-
-```sh
-npm test
-```
-
-The integration tests use ephemeral ports, deterministic seed data, and isolated temporary storage. They cover sign-in, sign-out, access control, project and task mutations, validation, and persistence. To exercise the browser filters manually, sign in as the member, search for **mobile**, then select **Done** and confirm the empty result. Clear the search and confirm **Inventory existing pages** appears.
-
-To enable GitHub Actions, put the contents of this directory at the repository root, including the hidden `.github` directory. The workflow runs the same tests on pushes and pull requests using Node.js 24.
-
-The demo binds to loopback and uses fixed, public credentials. Keep it in a local or isolated test environment.
-
-## Quality engineering demo
-
-Use Node.js 24 LTS for the quality checks. If you have nvm, run `nvm install` and `nvm use` to select the version in `.nvmrc`. If you use another installer, check that `node --version` reports 24.x before running `npm ci`.
+Use Node.js 24 from [`.nvmrc`](.nvmrc). If you use nvm, run
+`nvm install && nvm use` first.
 
 ```sh
 npm ci
@@ -46,150 +44,88 @@ npm test
 npm run test:e2e
 ```
 
-Run a single feature with `npm run test:e2e -- --spec cypress/e2e/features/projects.feature`.
-Use `npx cypress open` for interactive debugging. The report-producing command is
-`npm run test:e2e`.
+Run a single feature with
+`npm run test:e2e -- --spec cypress/e2e/features/collaboration.feature`.
+Use `npx cypress open` to debug interactively.
 
-### Architecture and coverage
+To explore Relay manually, run `npm start` and open
+[http://127.0.0.1:3000](http://127.0.0.1:3000). The sign-in form can fill the
+three **public synthetic demo accounts**. Please use them only in a local or
+isolated environment. Data for a manually started app lives in `.data/workspace.json`.
+Set `RELAY_DATA_FILE` to use an independent data file.
 
-Relay keeps its existing Node HTTP server, plain browser JavaScript and optional JSON file.
-The API exposes sign-in, sign-out, a workspace read, project creation, membership changes, and task creation and editing.
-HTTP-only session cookies identify users. The server checks project access on reads and
-writes, and restricts membership changes to owners and admins. The seeded credentials are public demo fixtures. Use a local or
-isolated environment.
+**Business demo:** Sign in as Sam Rivera, share **Website refresh** with Jordan
+Lee, and assign Jordan a task. Sign in as Jordan to show the shared workspace.
+Then remove Jordan as Sam and verify that access is revoked and the task is
+unassigned. The [collaboration feature](cypress/e2e/features/collaboration.feature)
+reproduces this workflow automatically.
 
-Cypress starts the same application on an ephemeral loopback port and confirms readiness.
-Before each scenario a Cypress Node task replaces the in-memory store and session map.
-Each parallel process gets its own server and data. There is no delete API, so test cleanup
-discards the entire store. API setup uses the same login and task endpoints as the UI and
-never touches the persistent local file.
+### Read the results
 
-Fourteen Gherkin scenarios cover login and logout, invalid credentials, project creation,
-member/admin permissions, required fields, task creation and editing, status persistence
-after reload, combined filtering, project sharing, assignment, and access revocation. `cypress/api` holds API setup, `cypress/pages` holds
-selectors and UI entry points, and step definitions translate feature text into assertions.
-Cucumber uses the Badeball preprocessor with esbuild. The lockfile pins the compatible versions.
+Open `reports/<UTC date>/<run ID>/index.html`. A passing run contains the HTML
+report and `results.json`. A failed or incomplete run adds `diagnostics/` with
+the available Cypress log, failed-screen screenshots, DOM selectors, and concise
+failure findings. GitHub Actions writes a job summary and uploads the same archive.
 
-### Reports and GitHub Actions
-
-Open `reports/<UTC date>/<run ID>/index.html` after a run. It shows the run
-summary, features, scenarios, Gherkin steps, and linked failure evidence.
-`results.json` is the normalized source for the HTML, optional PDF, CI summary,
-Teams notifications, and maintenance tools.
-
-```text
-<run>/
-  index.html
-  results.json
-  diagnostics/             # failed or incomplete runs, or verbose capture
-    analysis.json          # failed or incomplete runs only
-    cypress.log
-    failure-dom.ndjson     # when Cypress captures failed UI state
-    screenshots/           # when Cypress captures images
-```
-
-The default passing archive contains exactly two files. Cucumber JSON is consumed
-from temporary storage. The GitHub Actions summary is written directly to the job
-summary and Teams cards are generated from results when publishing.
-
-| Setting | Effect |
+| Setting | Default and effect |
 | --- | --- |
-| `RELAY_REPORT_PDF=1` | Generates `report.pdf` and links it from HTML. Required for the optional SharePoint PDF upload. |
-| `RELAY_REPORT_VERBOSE=1` | Keeps raw Cucumber JSON under `diagnostics/` when available, and retains logs and any browser evidence even on a successful run. |
-| `RELAY_ARCHIVE_TEAMS_CARD=1` | Saves the generated payload as `teams.json` for inspection. The normal publisher works without it. |
-| `RELAY_ARTIFACT_RETENTION_DAYS` | Sets GitHub Actions artifact retention to an integer from 1–90 (default 30), subject to the repository or organization limit. Local runs are kept until you remove them. |
+| `RELAY_REPORT_PDF=1` | Off. Adds a PDF export and enables PDF upload when SharePoint is configured. |
+| `RELAY_REPORT_VERBOSE=1` | Off. Retains raw Cucumber JSON and available diagnostics, including logs on passing runs. |
+| `RELAY_ARCHIVE_TEAMS_CARD=1` | Off. Saves the card JSON for inspection. |
+| `RELAY_ARTIFACT_RETENTION_DAYS` | Defaults to 30. Accepts 1–90 days in GitHub Actions, subject to the repository or organization limit. |
 
-Set these as environment variables locally, or as GitHub Actions repository
-variables for CI. For example, `RELAY_REPORT_PDF=1 npm run test:e2e` enables
-PDF export for one local run.
+Set these as local environment variables or, for CI, as GitHub Actions repository
+variables. Compare runs with
+`npm run report:compare -- <first/results.json> <second/results.json>`.
+Generated archives, raw logs, and local app data are ignored by Git. Use only
+synthetic data in public workflow runs and review artifact contents before sharing.
 
-The workflow archives successful and failed runs. A startup failure can have zero
-completed scenarios and still retain the Cypress log and analysis. The runner
-preserves Cypress's nonzero exit code. An exit code of zero with missing or invalid
-Cucumber results is treated as a reporting failure. Incomplete runs with skipped
-scenarios are marked separately in JSON and include diagnostics. Downloading
-private GitHub artifacts requires repository access.
+<details>
+<summary>Optional Teams and SharePoint configuration</summary>
 
-**Migration:** Read Gherkin steps from `results.json` or open `index.html`.
-`summary.md` and the secondary Cucumber HTML report have been removed.
-Use `results.json.artifacts` and scenario screenshot paths to find optional
-files. Paths are relative to the archive root. New diagnostic files live under
-`diagnostics/`. The maintenance tools also read diagnostics from older archives
-that stored those files at the root. SharePoint users should set
-`RELAY_REPORT_PDF=1` in GitHub to continue publishing PDFs.
+Set `TEAMS_WEBHOOK_URL` as a GitHub Actions secret for a Teams Workflows webhook.
+Relay publishes from trusted `main` runs. The card links to the GitHub artifact
+by default or to an HTTPS PDF configured through `REPORT_PDF_URL`. Use the
+[passing](examples/sample-passed.json) and [failing](examples/sample-failed.json)
+sample cards to preview locally without a webhook. See
+[Teams Workflows webhook setup](https://learn.microsoft.com/microsoftteams/platform/webhooks-and-connectors/how-to/add-incoming-webhook).
 
-To compare two downloaded or local runs:
+For SharePoint, enable `RELAY_REPORT_PDF=1` and set repository variables
+`SP_TENANT_ID`, `SP_CLIENT_ID`, and `SP_DRIVE_ID`, plus the
+`SP_CLIENT_SECRET` secret. Grant the Entra application Graph
+`Sites.Selected` permissions and write access to the target site. Existing
+SharePoint permissions govern who can open the uploaded report. See
+[Microsoft Graph selected permissions](https://learn.microsoft.com/en-us/graph/permissions-selected-overview).
 
-```sh
-npm run report:compare -- path/to/first/results.json path/to/second/results.json
-```
+</details>
 
-The Cypress runner and report scripts are independent of GitHub Actions. Another CI system
-can run the same npm scripts and archive the dated directory printed by the runner.
+## 2. AI-Assisted Test Maintenance
 
-### Microsoft Teams and report access
+**Experimental, locally validated with an actual Codex CLI run.** An operator
+starts the investigation. Relay summarizes the failed Gherkin steps, Cypress error,
+and DOM selectors from the same report archive. Codex inspects the relevant source
+in a disposable checkout and can leave a targeted, uncommitted test change.
+Review the diff, then rerun Cypress separately before deciding whether to adopt it.
 
-The checked-in [passing](examples/sample-passed.json) and [failing](examples/sample-failed.json)
-cards use fictional results and example report links. Paste either JSON file into the
-[Adaptive Cards Designer](https://adaptivecards.io/designer/) and use Preview mode to try
-the failure toggle. The first five failure summaries are always visible, so they remain
-available in a client that cannot render the toggle.
+The demonstrated selector change was outside the deterministic repair policy.
+Codex identified the renamed status-filter selector and proposed one locator edit.
+An independent rerun passed all 14 scenarios. A separate read-only investigation
+identified an application persistence defect and left the test expectations intact.
 
-To publish, create a Teams **Workflows** webhook that posts an Adaptive Card to a channel
-or chat. Set its URL as the GitHub Actions secret `TEAMS_WEBHOOK_URL`. The adapter sends
-the Teams message envelope over HTTPS only on trusted main-branch runs. Without a webhook
-the publisher skips delivery. Use the sample cards or enable card archiving for local inspection. This configuration uses the Workflows
-trigger mode that accepts requests through the secret URL. For tenant-authenticated
-triggers use an adapter with the auth method required by your tenant.
-See [Teams Workflows webhooks](https://learn.microsoft.com/microsoftteams/platform/webhooks-and-connectors/how-to/add-incoming-webhook)
-and [ToggleVisibility](https://learn.microsoft.com/en-us/adaptive-cards/schema-explorer/action-toggle-visibility).
+| Workflow | Status |
+| --- | --- |
+| [Codex handoff and human review](docs/AI_MAINTENANCE.md#coding-agent-proof-of-concept) | Experimental. Requires a signed-in Codex CLI and an approved run archive. Verified locally on synthetic fixtures. |
+| [Deterministic failure demonstrations](docs/AI_MAINTENANCE.md#reproduce-the-three-cases) | Implemented and locally validated. Demonstrates an application defect, a known selector change, and an environment failure. |
+| [Digest-based patch approval](docs/AI_MAINTENANCE.md#inspect-and-approve-a-proposal) | Implemented for a single allowlisted deterministic selector correction. Separate from the Codex experiment. |
+| [Ollama nomination](docs/AI_MAINTENANCE.md#optional-model-nomination) | Optional adapter. Live model inference through this adapter has not been validated. |
 
-The default Teams link points at the permissioned GitHub archive. To expose the PDF to
-stakeholders who have no GitHub account, configure one of these destinations:
-
-- Set `REPORT_PDF_URL` to an HTTPS PDF URL hosted in storage your intended readers can
-  access. A fixed URL refers to the report served by that location.
-- Enable PDF export with `RELAY_REPORT_PDF=1`, then configure GitHub variables `SP_TENANT_ID`, `SP_CLIENT_ID`,
-  `SP_DRIVE_ID` and secret `SP_CLIENT_SECRET`. Give the Entra application Microsoft
-  Graph application permission `Sites.Selected`, obtain admin consent, and grant that
-  application write access on the target SharePoint site. Set the drive ID to the target
-  document library. Each run uploads a dated PDF and the card links to the returned
-  SharePoint URL. Existing SharePoint reader permissions determine who can open it.
-  See [selected permissions](https://learn.microsoft.com/en-us/graph/permissions-selected-overview)
-  and [Graph file upload](https://learn.microsoft.com/en-us/graph/api/driveitem-put-content).
-
-Teams and SharePoint are optional. No live tenant credentials are needed for local and
-CI test runs. The sample cards do not send messages.
-
-### Failure triage
-
-The [controlled maintenance guide](docs/AI_MAINTENANCE.md) explains how to
-reproduce three real Cypress failures, inspect an evidence-backed selector patch,
-validate it, and approve it explicitly. See the [baseline audit](docs/AI_MAINTENANCE_AUDIT.md)
-for the existing tool and integration behavior.
-
-`diagnostics/analysis.json` records failed steps, concise findings, and relative references
-to screenshots, logs, DOM evidence, and scenario details in `results.json`. The default classification is
-deterministic and works offline. To add model assistance, set `RELAY_MODEL_COMMAND` to an
-executable adapter you trust. The adapter reads the triage prompt and evidence on stdin and
-writes analysis as plain text on stdout. Run it with the report pipeline or separately:
+To generate the experimental failure:
 
 ```sh
-node quality/analyze.mjs path/to/results.json
+node quality/maintenance/demo.mjs agent-selector
 ```
 
-The model is optional and advisory. The analyzer neither executes its output nor changes
-tests. Use an approved local model or review the diagnostic data before connecting an
-external provider. In the absence of an adapter, or if it times out, rules-based findings
-remain available.
-
-For an example using a locally running [Ollama](https://docs.ollama.com/api/generate)
-server, set `RELAY_OLLAMA_MODEL` to the name of an already installed local model and run:
-
-```sh
-RELAY_OLLAMA_MODEL=your-local-model RELAY_MODEL_COMMAND=./quality/ollama.mjs \
-  node quality/analyze.mjs path/to/results.json
-```
-
-The adapter sends its request to loopback. The core demo and GitHub Actions workflow use
-the offline rules unless you configure an adapter.
+Follow the [reproduction, scope, and validation guide](docs/AI_MAINTENANCE.md)
+for the remaining steps. The standard CI run uses offline diagnostics. Codex
+has no automatic PR or merge workflow. Use trusted, synthetic evidence and
+review the generated prompt before sending it to a model provider.

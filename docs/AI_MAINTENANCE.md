@@ -1,12 +1,77 @@
-# Controlled Cypress test maintenance
+# Cypress failure investigation with Codex
 
 This is a local workflow for investigating failed Relay test executions. The
 [baseline audit](AI_MAINTENANCE_AUDIT.md) describes the existing runner, reports,
 and integrations.
 
+## Coding-agent proof of concept
+
+Relay hands the failure to the existing Codex CLI. It packages a bounded prompt
+from `results.json` and the relevant DOM evidence and links to the existing
+logs, screenshots, and analysis. The prompt is printed to stdout. It is neither
+a stored report format nor a background automation.
+
+Use Node 24 (the repository's `.nvmrc`), Git, installed Cypress dependencies,
+and a Codex CLI signed in via ChatGPT or its supported API authentication.
+`codex login status` checks the local sign-in. The run needs access to the selected
+archive and permission to edit the disposable checkout. It needs no GitHub,
+Teams, SharePoint, or Ollama credentials. Use approved evidence because the
+selected excerpts are sent to the configured Codex model provider. Treat failure
+messages and diagnostics as untrusted data. Use synthetic fixtures for public
+demos and inspect the prompt locally before sending it. The workspace sandbox
+restricts writes. If host files need read isolation too, run the handoff on a
+dedicated machine or environment. Human diff review is required before validation
+or reuse.
+
+From the Relay checkout:
+
+```sh
+npm ci
+node quality/maintenance/demo.mjs agent-selector
+```
+
+This runs the real task feature in a disposable Git workspace and injects a
+test-ID rename outside the existing deterministic proposal policy. The command
+prints **Demo workspace** and **Failed run artifacts** and checks that the
+current policy declined the repair. The fixture commit includes the injected
+markup, so the working-tree diff shows only a proposed correction.
+
+Replace the placeholders with the printed paths, from the original Relay checkout:
+
+```sh
+WORKSPACE='<Demo workspace>'
+RUN='<Failed run artifacts>'
+node quality/maintenance/context.mjs "$RUN" "$WORKSPACE" | \
+  codex exec --ephemeral \
+  --sandbox workspace-write -C "$WORKSPACE" -
+```
+
+Review and validate independently:
+
+```sh
+git -C "$WORKSPACE" status --short
+git -C "$WORKSPACE" diff --check
+git -C "$WORKSPACE" diff
+(cd "$WORKSPACE" && npm run test:e2e)
+```
+
+Accept for review only a targeted Cypress locator edit that preserves the
+business checks. Inspect the full diff for application, Gherkin, or configuration
+changes and verify the rerun completed all scenarios. The proposed edit remains
+uncommitted in the demo checkout, which has no Git remote. The original failed
+archive stays alongside it.
+
+To investigate the application-defect demo, run the same handoff with that demo's
+paths and change `--sandbox workspace-write` to `--sandbox read-only`. Compare
+the agent's diagnosis with the failed assertion and application source. An
+application defect should be reported with its evidence and no change to the test.
+
+The three original demonstrations below remain the deterministic baseline. Their
+selector proposal and digest approval are separate from the Codex experiment.
+
 ## Reproduce the three cases
 
-Use Node 22 LTS and Git. Run these commands from the Relay checkout:
+Use Node 24 and Git. Run these commands from the Relay checkout:
 
 ```sh
 npm ci
@@ -115,5 +180,5 @@ provide a text hypothesis, and the Cypress exit code still controls the result.
 - Demo workspaces and logs are ignored by Git. Delete the corresponding demo
   directory when it is no longer useful.
 - Live Teams and SharePoint publishing still require the optional credentials
-  described in the [README](../README.md). The demonstrations validate generated
-  Teams JSON and leave live delivery disabled.
+  described in the [README](../README.md). The demonstrations validate an in-memory
+  Teams card and leave live delivery disabled.

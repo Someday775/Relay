@@ -3,3 +3,5 @@ node_modules/
 .quality-current/
 reports/
 .env
+.DS_Store
+.env.*

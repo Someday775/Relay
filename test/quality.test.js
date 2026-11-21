@@ -1,6 +1,8 @@
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { execFileSync } from 'node:child_process';
+import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { normalize } from '../quality/results.mjs';
@@ -74,4 +76,42 @@ test('selector policy preserves the business assertion and rejects other edits',
   assert.throws(() => applySelector(source, { ...candidate, file: 'server.js' }), /allowlist/);
   assert.throws(() => applySelector(source, { ...candidate, to: "x'); cy.exec('anything" }), /allowlist/);
   assert.throws(() => applySelector(source + source, candidate), /exact project-list helper/);
+});
+
+test('coding-agent handoff omits unsafe artifact paths and symlinked evidence', async (t) => {
+  const root = await mkdtemp(join(tmpdir(), 'relay-agent-context-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const workspace = join(root, 'workspace');
+  const archive = join(root, 'archive');
+  const diagnostics = join(archive, 'diagnostics');
+  const screenshots = join(diagnostics, 'screenshots', 'tasks.feature');
+  await mkdir(workspace);
+  await mkdir(screenshots, { recursive: true });
+  await writeFile(join(root, 'outside.txt'), 'private-evidence-marker');
+  await symlink(join(root, 'outside.txt'), join(diagnostics, 'failure-dom.ndjson'));
+  await symlink(join(root, 'outside.txt'), join(screenshots, 'symlink.png'));
+  await writeFile(join(screenshots, 'valid.png'), '');
+  await writeFile(join(archive, 'results.json'), JSON.stringify({
+    status: 'FAILED',
+    exitCode: 1,
+    artifacts: { log: '../../outside.txt' },
+    scenarios: [{
+      status: 'failed',
+      uri: 'cypress/e2e/features/tasks.feature',
+      name: 'Task stays done',
+      steps: [{ text: 'Then the task is Done', status: 'failed' }],
+      error: 'Expected Done',
+      screenshots: [
+        '../../outside.txt',
+        'diagnostics/screenshots/tasks.feature/symlink.png',
+        'diagnostics/screenshots/tasks.feature/valid.png',
+      ],
+    }],
+  }));
+  const command = new URL('../quality/maintenance/context.mjs', import.meta.url);
+  const output = execFileSync(process.execPath, [fileURLToPath(command), archive, workspace], { encoding: 'utf8' });
+  assert.match(output, /"archive": "\.\.\/archive"/);
+  assert.match(output, /Then the task is Done/);
+  assert.match(output, /tasks\.feature\/valid\.png/);
+  assert.doesNotMatch(output, /outside\.txt|private-evidence-marker|symlink\.png|failure-dom\.ndjson/);
 });

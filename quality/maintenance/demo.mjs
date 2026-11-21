@@ -2,7 +2,13 @@ import { teamsCard } from '../teams.mjs';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
-import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
+import {
+  appendFile,
+  mkdir,
+  readFile,
+  rename,
+  writeFile,
+} from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { propose, validate } from './proposal.mjs';
 import { copySandbox, sandboxRun } from './sandbox.mjs';
@@ -25,10 +31,17 @@ const cases = {
     category: 'Selector drift',
   },
   environment: { category: 'Environment' },
+  'agent-selector': {
+    path: 'public/index.html',
+    before: 'id="filter" data-testid="filter"',
+    after: 'id="filter" data-testid="task-status-filter"',
+    spec: 'tasks',
+    category: 'Element or rendering',
+  },
 };
 if (!Object.hasOwn(cases, demo)) {
   console.error(
-    'Usage: node quality/maintenance/demo.mjs <application|selector|environment>',
+    'Usage: node quality/maintenance/demo.mjs <application|selector|environment|agent-selector>',
   );
   process.exit(2);
 }
@@ -70,7 +83,17 @@ const git = (...args) =>
   );
 git('init');
 if (example.path) {
-  git('add', example.path);
+  if (demo === 'agent-selector') {
+    // Keep the injected markup in the local baseline so git diff shows only
+    // the agent's subsequent proposal. The disposable repo has no remote.
+    await appendFile(
+      join(root, '.git', 'info', 'exclude'),
+      '\n/node_modules\n/reports\n',
+    );
+    git('add', '--all');
+  } else {
+    git('add', example.path);
+  }
   git('commit', '--no-verify', '-m', 'Record clean demo fixture');
   const path = join(root, example.path);
   const source = await readFile(path, 'utf8');
@@ -80,6 +103,10 @@ if (example.path) {
     'Expected exactly one failure injection point',
   );
   await writeFile(path, source.replace(example.before, example.after));
+  if (demo === 'agent-selector') {
+    git('add', example.path);
+    git('commit', '--no-verify', '-m', 'Inject demo selector drift');
+  }
 }
 
 const run = await sandboxRun(
@@ -127,4 +154,9 @@ if (demo === 'selector') {
     /No policy-eligible selector correction/,
   );
   console.log('Policy blocked test-code changes.');
+  if (demo === 'agent-selector') {
+    console.log(
+      'Ready for a coding-agent investigation. See docs/AI_MAINTENANCE.md.',
+    );
+  }
 }

@@ -2,7 +2,8 @@ export const statuses = ['To do', 'In progress', 'Done'];
 
 export const accounts = [
   { id: 1, name: 'Alex Morgan', email: 'admin@relay.test', role: 'admin' },
-  { id: 2, name: 'Sam Rivera', email: 'member@relay.test', role: 'member' }
+  { id: 2, name: 'Sam Rivera', email: 'member@relay.test', role: 'member' },
+  { id: 3, name: 'Jordan Lee', email: 'collaborator@relay.test', role: 'member' }
 ];
 
 export const demoPassword = 'relay-demo';

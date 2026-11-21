@@ -4,6 +4,9 @@ const editForm = $('#editor-form');
 const dialog = $('#editor');
 const search = $('#search');
 const filter = $('#filter');
+const assigneeFilter = $('#assignee-filter');
+const accessDialog = $('#access');
+const accessForm = $('#access-form');
 let workspace;
 let projectId;
 let editor;
@@ -29,6 +32,8 @@ function showLogin() {
   projectId = undefined;
   search.value = '';
   filter.value = '';
+  assigneeFilter.value = '';
+  if (accessDialog.open) accessDialog.close();
   if (dialog.open) dialog.close();
   $('#workspace').hidden = true;
   $('#identity').hidden = true;
@@ -42,18 +47,38 @@ function make(tag, text, className) {
   return item;
 }
 
+function selectedProject() {
+  return workspace.projects.find(item => item.id === projectId);
+}
+
+function projectPeople(project) {
+  const ids = [project?.ownerId, ...(project?.memberIds ?? [])];
+  return workspace.people.filter(person => ids.includes(person.id));
+}
+
+function updateAssigneeFilter(project) {
+  const selected = assigneeFilter.value;
+  assigneeFilter.replaceChildren(
+    new Option('All assignees', ''),
+    new Option('Unassigned', 'unassigned'),
+    ...projectPeople(project).map(person => new Option(person.name, String(person.id)))
+  );
+  assigneeFilter.value = [...assigneeFilter.options].some(option => option.value === selected) ? selected : '';
+}
+
 function renderTasks() {
   if (!workspace) return;
   const query = search.value.trim().toLowerCase();
   const tasks = workspace.tasks.filter(task =>
     task.projectId === projectId &&
     (!filter.value || task.status === filter.value) &&
+    (!assigneeFilter.value || String(task.assigneeId ?? 'unassigned') === assigneeFilter.value) &&
     (task.title.toLowerCase().includes(query) || task.description.toLowerCase().includes(query))
   );
   $('#task-count').textContent = tasks.length + (tasks.length === 1 ? ' task' : ' tasks');
   const empty = $('#empty');
   empty.hidden = tasks.length > 0;
-  empty.textContent = query || filter.value ? 'No tasks match your filters.' : 'No tasks yet. Create a task to get started.';
+  empty.textContent = query || filter.value || assigneeFilter.value ? 'No tasks match your filters.' : 'No tasks yet. Create a task to get started.';
   $('#tasks').replaceChildren(...tasks.map(task => {
     const row = make('li', '', 'task-row');
     row.dataset.testid = 'task-row';
@@ -65,6 +90,10 @@ function renderTasks() {
     title.addEventListener('click', () => openEditor('task', task));
     details.append(title);
     if (task.description) details.append(make('p', task.description));
+    const assignee = workspace.people.find(person => person.id === task.assigneeId);
+    const assignment = make('p', assignee?.name ?? 'Unassigned', 'assignee');
+    assignment.dataset.testid = 'task-assignee';
+    details.append(assignment);
     const status = make('select', '', 'status');
     status.dataset.testid = 'task-status';
     status.dataset.status = task.status;
@@ -97,7 +126,7 @@ function renderTasks() {
 }
 
 function render() {
-  const project = workspace.projects.find(item => item.id === projectId);
+  const project = selectedProject();
   $('#projects').replaceChildren(...workspace.projects.map(item => {
     const button = make('button', item.name, 'project');
     button.dataset.testid = 'project-item';
@@ -106,6 +135,7 @@ function render() {
       projectId = item.id;
       search.value = '';
       filter.value = '';
+      assigneeFilter.value = '';
       render();
       $('#projects [aria-current]').focus();
     });
@@ -113,7 +143,10 @@ function render() {
   }));
   $('#project-title').textContent = project?.name ?? 'Create your first project';
   $('#project-description').textContent = project?.description ?? '';
+  $('#manage-access').hidden = !project ||
+    (workspace.user.role !== 'admin' && workspace.user.id !== project.ownerId);
   $('#new-task').hidden = !project;
+  updateAssigneeFilter(project);
   $('#tasks-panel').hidden = !project;
   renderTasks();
 }
@@ -123,7 +156,7 @@ async function loadWorkspace() {
   const result = await api('workspace');
   if (epoch !== currentEpoch) return;
   workspace = result;
-  projectId ??= workspace.projects[0]?.id;
+  if (!selectedProject()) projectId = workspace.projects[0]?.id;
   filter.replaceChildren(new Option('All statuses', ''), ...workspace.statuses.map(value => new Option(value)));
   $('#user').textContent = workspace.user.name + ' · ' + (workspace.user.role === 'admin' ? 'Admin' : 'Member');
   $('#login').hidden = true;
@@ -142,6 +175,11 @@ function openEditor(kind, task) {
   editForm.elements.title.value = task?.title ?? '';
   editForm.elements.description.value = task?.description ?? '';
   $('#status-field').hidden = kind !== 'task';
+  $('#assignee-field').hidden = kind !== 'task';
+  const assignee = editForm.elements.assigneeId;
+  assignee.replaceChildren(new Option('Unassigned', ''),
+    ...projectPeople(selectedProject()).map(person => new Option(person.name, String(person.id))));
+  assignee.value = String(task?.assigneeId ?? '');
   editForm.elements.status.replaceChildren(...workspace.statuses.map(value => new Option(value)));
   editForm.elements.status.value = task?.status ?? workspace.statuses[0];
   dialog.showModal();
@@ -190,11 +228,77 @@ $('#new-task').addEventListener('click', () => openEditor('task'));
 $('#cancel').addEventListener('click', () => dialog.close());
 search.addEventListener('input', renderTasks);
 filter.addEventListener('change', renderTasks);
+assigneeFilter.addEventListener('change', renderTasks);
+
+function renderAccess() {
+  const project = selectedProject();
+  const collaborators = project.memberIds ?? [];
+  $('#access-owner').textContent = 'Owner: ' + workspace.people.find(person => person.id === project.ownerId).name;
+  const members = workspace.people.filter(person => collaborators.includes(person.id));
+  $('#access-members').replaceChildren(...members.map(person => {
+    const row = make('li', person.name);
+    row.dataset.testid = 'access-member';
+    const remove = make('button', 'Remove', 'quiet');
+    remove.type = 'button';
+    remove.dataset.testid = 'remove-access';
+    remove.setAttribute('aria-label', 'Remove ' + person.name);
+    remove.addEventListener('click', () => changeAccess(person.id, false));
+    row.append(remove);
+    return row;
+  }));
+  const candidates = workspace.people.filter(person =>
+    person.role !== 'admin' && person.id !== project.ownerId && !collaborators.includes(person.id));
+  accessForm.elements.userId.replaceChildren(
+    new Option('Choose a person', ''),
+    ...candidates.map(person => new Option(person.name, String(person.id)))
+  );
+  $('#add-access').disabled = candidates.length === 0;
+}
+
+async function changeAccess(userId, member) {
+  const destination = projectId;
+  const currentEpoch = epoch;
+  const errorBox = accessForm.querySelector('.error');
+  errorBox.textContent = '';
+  const controls = [...accessDialog.querySelectorAll('button, select')].filter(control => !control.disabled);
+  controls.forEach(control => { control.disabled = true; });
+  accessDialog.setAttribute('aria-busy', 'true');
+  try {
+    const result = await api('projects/' + destination + '/members', 'PATCH', { userId, member });
+    if (epoch !== currentEpoch) return;
+    Object.assign(selectedProject(), result.project);
+    workspace.tasks = workspace.tasks.filter(task => task.projectId !== destination).concat(result.tasks);
+    render();
+    renderAccess();
+    $('#notice').textContent = member ? 'Collaborator added.' : 'Collaborator removed.';
+  } catch (error) {
+    errorBox.textContent = error.message;
+  } finally {
+    accessDialog.removeAttribute('aria-busy');
+    controls.forEach(control => { if (control.id !== 'add-access') control.disabled = false; });
+    $('#add-access').disabled = accessForm.elements.userId.options.length < 2;
+    if (accessDialog.open && !errorBox.textContent) $('#close-access').focus();
+  }
+}
+
+$('#manage-access').addEventListener('click', () => {
+  accessForm.querySelector('.error').textContent = '';
+  renderAccess();
+  accessDialog.showModal();
+});
+$('#close-access').addEventListener('click', () => accessDialog.close());
+accessDialog.addEventListener('cancel', event => {
+  if (accessDialog.hasAttribute('aria-busy')) event.preventDefault();
+});
+accessForm.addEventListener('submit', event => {
+  event.preventDefault();
+  changeAccess(Number(accessForm.elements.userId.value), true);
+});
 
 editForm.addEventListener('submit', async event => {
   event.preventDefault();
   const { kind, task, projectId: destination } = editor;
-  const { title, description, status } = Object.fromEntries(new FormData(editForm));
+  const { title, description, status, assigneeId } = Object.fromEntries(new FormData(editForm));
   const errorBox = editForm.querySelector('.error');
   const saveButton = $('#save');
   const currentEpoch = epoch;
@@ -209,9 +313,10 @@ editForm.addEventListener('submit', async event => {
       projectId = result.project.id;
       search.value = '';
       filter.value = '';
+      assigneeFilter.value = '';
     } else {
       const result = await api(task ? 'tasks/' + task.id : 'tasks', task ? 'PATCH' : 'POST',
-        { title, description, status, projectId: destination });
+        { title, description, status, assigneeId: assigneeId ? Number(assigneeId) : null, projectId: destination });
       if (currentEpoch !== epoch) return;
       if (task) Object.assign(task, result.task);
       else workspace.tasks.push(result.task);

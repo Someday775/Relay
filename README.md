@@ -10,14 +10,15 @@ From the directory containing this README:
 npm start
 ```
 
-Open [http://127.0.0.1:3000](http://127.0.0.1:3000). The sign-in form can fill either demo account for you.
+Open [http://127.0.0.1:3000](http://127.0.0.1:3000). The sign-in form can fill a demo account for you.
 
 | Role | Email | Password | Access |
 | --- | --- | --- | --- |
-| Standard user | member@relay.test | relay-demo | Create projects and work with tasks in projects they own |
+| Standard user | member@relay.test | relay-demo | Create projects and work with tasks in owned or shared projects |
+| Collaborator demo | collaborator@relay.test | relay-demo | Starts with no projects and can work in projects shared with them |
 | Admin | admin@relay.test | relay-demo | Create projects and work with tasks in any project |
 
-The member starts with **Website refresh** and three tasks, one in each status. The admin sees that project and **Customer onboarding**, which starts with one task. Both roles can create, edit, and change task status within their accessible projects. Search matches the title and description of tasks in the selected project. Search and the status filter can be combined.
+The member starts with **Website refresh** and three tasks, one in each status. The admin sees that project and **Customer onboarding**, which starts with one task. Both roles can create, edit, and change task status within their accessible projects. Owners and admins can manage access. Task assignees must be the project owner or an added collaborator. Removing a collaborator revokes their project access and clears their assignments. Search matches the title and description of tasks in the selected project. Search, status, and assignee filters can be combined.
 
 ## Data and tests
 
@@ -52,9 +53,9 @@ Use `npx cypress open` for interactive debugging. The report-producing command i
 ### Architecture and coverage
 
 Relay keeps its existing Node HTTP server, plain browser JavaScript and optional JSON file.
-The API exposes sign-in, sign-out, a workspace read, project creation, and task creation and
-editing. HTTP-only session cookies identify users. The server checks project ownership on
-both reads and writes. The seeded credentials are public demo fixtures. Use a local or
+The API exposes sign-in, sign-out, a workspace read, project creation, membership changes, and task creation and editing.
+HTTP-only session cookies identify users. The server checks project access on reads and
+writes, and restricts membership changes to owners and admins. The seeded credentials are public demo fixtures. Use a local or
 isolated environment.
 
 Cypress starts the same application on an ephemeral loopback port and confirms readiness.
@@ -63,9 +64,9 @@ Each parallel process gets its own server and data. There is no delete API, so t
 discards the entire store. API setup uses the same login and task endpoints as the UI and
 never touches the persistent local file.
 
-Eleven Gherkin scenarios cover login and logout, invalid credentials, project creation,
+Fourteen Gherkin scenarios cover login and logout, invalid credentials, project creation,
 member/admin permissions, required fields, task creation and editing, status persistence
-after reload, and combined filtering. `cypress/api` holds API setup, `cypress/pages` holds
+after reload, combined filtering, project sharing, assignment, and access revocation. `cypress/api` holds API setup, `cypress/pages` holds
 selectors and UI entry points, and step definitions translate feature text into assertions.
 Cucumber uses the Badeball preprocessor with esbuild. The lockfile pins the compatible versions.
 

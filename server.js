@@ -108,7 +108,9 @@ export function createApp({ dataFile } = {}) {
       }
       if (!user) throw new RequestError(401, 'Sign in to continue.');
 
-      const canAccess = project => user.role === 'admin' || project.ownerId === user.id;
+      const canManage = project => user.role === 'admin' || project.ownerId === user.id;
+      const participants = project => [project.ownerId, ...(project.memberIds ?? [])];
+      const canAccess = project => canManage(project) || participants(project).includes(user.id);
       const getProject = id => {
         const project = data.projects.find(item => item.id === id && canAccess(item));
         if (!project) throw new RequestError(404, 'Project not found.');
@@ -117,7 +119,8 @@ export function createApp({ dataFile } = {}) {
       if (method === 'GET' && path === '/api/workspace') {
         const projects = data.projects.filter(canAccess);
         const ids = new Set(projects.map(project => project.id));
-        return send(200, { user, projects, tasks: data.tasks.filter(task => ids.has(task.projectId)), statuses });
+        const people = accounts.map(({ id, name, role }) => ({ id, name, role }));
+        return send(200, { user, projects, tasks: data.tasks.filter(task => ids.has(task.projectId)), statuses, people });
       }
       if (method === 'POST' && path === '/api/projects') {
         const body = await readBody(req);
@@ -127,6 +130,28 @@ export function createApp({ dataFile } = {}) {
         save({ ...data, projects: [...data.projects, project] });
         return send(201, { project });
       }
+      const membership = path.match(/^\/api\/projects\/(\d+)\/members$/);
+      if (method === 'PATCH' && membership) {
+        const body = await readBody(req);
+        const project = getProject(Number(membership[1]));
+        if (!canManage(project)) throw new RequestError(403, 'Only the owner or an admin can manage access.');
+        const account = accounts.find(person => person.id === body.userId && person.role !== 'admin');
+        if (!account || account.id === project.ownerId || typeof body.member !== 'boolean') {
+          throw new RequestError(422, 'Select a valid collaborator.');
+        }
+        const members = new Set(project.memberIds ?? []);
+        if (body.member) members.add(account.id);
+        else members.delete(account.id);
+        const updated = { ...project, memberIds: [...members] };
+        const projects = data.projects.map(item => item.id === project.id ? updated : item);
+        const tasks = body.member ? data.tasks : data.tasks.map(task =>
+          task.projectId === project.id && task.assigneeId === account.id
+            ? { ...task, assigneeId: null }
+            : task
+        );
+        save({ projects, tasks });
+        return send(200, { project: updated, tasks: tasks.filter(task => task.projectId === project.id) });
+      }
       const match = path.match(/^\/api\/tasks(?:\/(\d+))?$/);
       if (match && ((method === 'POST' && !match[1]) || (method === 'PATCH' && match[1]))) {
         const body = await readBody(req);
@@ -134,10 +159,15 @@ export function createApp({ dataFile } = {}) {
         const existing = editing ? data.tasks.find(task => task.id === Number(match[1])) : undefined;
         if (editing && !existing) throw new RequestError(404, 'Task not found.');
         const projectId = existing?.projectId ?? body.projectId;
-        getProject(projectId);
+        const project = getProject(projectId);
+        const assigneeId = Object.hasOwn(body, 'assigneeId') ? body.assigneeId : existing?.assigneeId;
+        if (assigneeId !== undefined && assigneeId !== null && !participants(project).includes(assigneeId)) {
+          throw new RequestError(422, 'Choose an assignee with project access.');
+        }
         const task = {
           id: existing?.id ?? data.tasks.length + 1,
           projectId,
+          ...(assigneeId === undefined ? {} : { assigneeId }),
           title: field({ ...existing, ...body }, 'title', 'Task title', 100, true),
           description: field({ ...existing, ...body }, 'description', 'Description', 500),
           status: Object.hasOwn(body, 'status') ? body.status : existing?.status ?? statuses[0]

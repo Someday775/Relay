@@ -49,12 +49,12 @@ Then('the sign-in form explains that the credentials are incorrect', () => {
   cy.get('#workspace').should('not.be.visible');
 });
 
-Given('I am signed in as a {string}', (role: Role) => {
+Given('I am signed in with the {string} role', (role: Role) => {
   cy.signInAs(role);
   openWorkspace();
 });
 Given(
-  'I am signed in as a {string} with a task called {string}',
+  'I am signed in with the {string} role with a task called {string}',
   (role: Role, name: string) => {
     cy.signInAs(role);
     createTask(name);

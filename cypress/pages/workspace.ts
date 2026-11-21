@@ -10,3 +10,9 @@ export function openWorkspace() {
   cy.visit('/');
   cy.get('#workspace').should('be.visible');
 }
+
+export function submitNew(kind: 'project' | 'task', title: string) {
+  cy.get('#new-' + kind).click();
+  dialog().find('[name=title]').type(title);
+  dialog().find('#save').click();
+}

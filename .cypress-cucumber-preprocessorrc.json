@@ -1,4 +1,4 @@
 {
-  "stepDefinitions": "cypress/support/step_definitions/**/*.ts",
+  "stepDefinitions": "cypress/e2e/step_definitions/**/*.ts",
   "json": { "enabled": true, "output": ".quality-current/cucumber.json" }
 }

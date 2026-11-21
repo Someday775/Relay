@@ -1,13 +1,54 @@
-name: Application tests
-on: [push, pull_request]
+name: Relay quality checks
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
 permissions:
   contents: read
 jobs:
-  test:
+  quality:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Install dependencies and Cypress
+        id: install
+        run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
       - run: npm test
+      - name: Run Cypress and generate reports
+        id: cypress
+        if: ${{ !cancelled() && steps.install.outcome != 'failure' }}
+        run: npm run test:e2e
+      - name: Upload run archive
+        if: ${{ always() && steps.cypress.outputs.directory != '' }}
+        id: archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.cypress.outputs.archive }}
+          path: ${{ steps.cypress.outputs.directory }}
+          if-no-files-found: error
+          retention-days: 30
+      - name: Publish PDF to SharePoint
+        if: ${{ always() && steps.archive.outcome == 'success' && github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && vars.SP_DRIVE_ID != '' }}
+        id: sharepoint
+        env:
+          REPORT_DIRECTORY: ${{ steps.cypress.outputs.directory }}
+          SP_TENANT_ID: ${{ vars.SP_TENANT_ID }}
+          SP_CLIENT_ID: ${{ vars.SP_CLIENT_ID }}
+          SP_DRIVE_ID: ${{ vars.SP_DRIVE_ID }}
+          SP_CLIENT_SECRET: ${{ secrets.SP_CLIENT_SECRET }}
+        run: node quality/sharepoint.mjs "$REPORT_DIRECTORY"
+      - name: Send the Teams card
+        if: ${{ always() && steps.archive.outcome == 'success' && github.event_name != 'pull_request' && github.ref == 'refs/heads/main' }}
+        env:
+          REPORT_DIRECTORY: ${{ steps.cypress.outputs.directory }}
+          ARTIFACT_URL: ${{ steps.archive.outputs.artifact-url }}
+          REPORT_PDF_URL: ${{ steps.sharepoint.outputs.pdf_url || vars.REPORT_PDF_URL }}
+          TEAMS_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}
+        run: node quality/teams.mjs "$REPORT_DIRECTORY/results.json"

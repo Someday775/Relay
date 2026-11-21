@@ -56,6 +56,7 @@ function renderTasks() {
   empty.textContent = query || filter.value ? 'No tasks match your filters.' : 'No tasks yet. Create a task to get started.';
   $('#tasks').replaceChildren(...tasks.map(task => {
     const row = make('li', '', 'task-row');
+    row.dataset.testid = 'task-row';
     const details = make('div', '', 'task-details');
     const title = make('button', task.title, 'task-title');
     title.type = 'button';

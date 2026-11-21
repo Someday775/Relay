@@ -11,6 +11,7 @@ const reportDirectory =
   process.env.RELAY_REPORT_DIRECTORY ?? '.quality-current';
 
 export default defineConfig({
+  expose: { jsonOutput: join(reportDirectory, 'cucumber.json') },
   video: false,
   screenshotOnRunFailure: true,
   screenshotsFolder: join(reportDirectory, 'screenshots'),
@@ -25,7 +26,6 @@ export default defineConfig({
       // The browser never receives an HTTP reset endpoint.
       let app = createApp();
       const server = createServer((req, res) => app.emit('request', req, res));
-      config.env.jsonOutput = join(reportDirectory, 'cucumber.json');
       await addCucumberPreprocessorPlugin(on, config);
       on(
         'file:preprocessor',

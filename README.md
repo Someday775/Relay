@@ -30,13 +30,13 @@ npm test
 
 The integration tests use ephemeral ports, deterministic seed data, and isolated temporary storage. They cover sign-in, sign-out, access control, project and task mutations, validation, and persistence. To exercise the browser filters manually, sign in as the member, search for **mobile**, then select **Done** and confirm the empty result. Clear the search and confirm **Inventory existing pages** appears.
 
-To enable GitHub Actions, put the contents of this directory at the repository root, including the hidden `.github` directory. The workflow runs the same tests on pushes and pull requests using Node.js 22.
+To enable GitHub Actions, put the contents of this directory at the repository root, including the hidden `.github` directory. The workflow runs the same tests on pushes and pull requests using Node.js 24.
 
 The demo binds to loopback and uses fixed, public credentials. Keep it in a local or isolated test environment.
 
 ## Quality engineering demo
 
-Use Node 22 LTS (`nvm use` with the included `.nvmrc`).
+Use Node.js 24 LTS for the quality checks. If you have nvm, run `nvm install` and `nvm use` to select the version in `.nvmrc`. If you use another installer, check that `node --version` reports 24.x before running `npm ci`.
 
 ```sh
 npm ci

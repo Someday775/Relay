@@ -1,10 +1,37 @@
-# Relay | Quality engineering portfolio
+# Relay | Quality Engineering Accelerator
 
-Relay is a small project and task management app used to demonstrate how a team
-can verify business-critical workflows on every change and investigate failures
-without weakening its tests. The demo covers a realistic collaboration flow:
-share a project, assign work, verify permissions, and revoke access without
-leaving orphaned assignments.
+**Behaviour-driven Cypress automation, CI reporting, and experimental AI-assisted test maintenance.**
+
+**Kate Frishman · Quality Engineering Consultant**
+
+Relay is a synthetic project and task management app that shows how a SaaS team
+can check critical journeys on every change and make regression failures easier
+for engineers and delivery stakeholders to investigate. It is a portfolio
+reference implementation built around repeatable test data and inspectable evidence.
+
+[Browse Gherkin scenarios](cypress/e2e/features) ·
+[View the CI workflow](.github/workflows/ci.yml) ·
+[Reproduce the Codex demo](docs/AI_MAINTENANCE.md#coding-agent-proof-of-concept) ·
+[Connect on LinkedIn](https://www.linkedin.com/in/kate-frishman/)
+
+## See a regression through a stakeholder’s eyes
+
+![Illustrative Teams-style mockup showing a synthetic Relay task-status regression](docs/images/relay-teams-demo.png)
+
+*Illustrative UI mockup using synthetic Relay failure data. The layout, controls,
+and timing shown are illustrative. Live Microsoft Teams delivery has not been
+verified. The actual payload fixtures are available as [passing](examples/sample-passed.json)
+and [failing](examples/sample-failed.json) Adaptive Card JSON.*
+
+In the [application-defect demo](docs/AI_MAINTENANCE.md#reproduce-the-three-cases),
+a task marked **Done** returns to **To do** after reload. The Gherkin scenario
+catches the regression at the persistence check, and the run archive preserves the
+failed step and available diagnostic evidence for investigation.
+
+| Capability | What you can review | Status |
+| --- | --- | --- |
+| [Core QA Automation](#1-core-qa-automation) | Cypress and Cucumber coverage, isolated test data, GitHub Actions, and readable reports | Implemented and tested locally and in CI |
+| [AI-Assisted Test Maintenance](#2-ai-assisted-test-maintenance) | Codex CLI investigation, an uncommitted selector proposal, and a separate Cypress rerun | Experimental local proof of concept with human review |
 
 ## 1. Core QA Automation
 
@@ -30,6 +57,19 @@ AI tools, GitHub credentials, and paid reporting services.
 - **Reporting:** [The runner](quality/run.mjs) normalizes Cucumber output into
   `results.json`. The HTML report, CI summary, optional PDF, and Teams card
   use that same data.
+
+```mermaid
+flowchart LR
+    Local["Local npm run"] --> Runner["Cypress + Cucumber runner"]
+    CI["GitHub Actions"] --> Runner
+    Runner --> App["Relay app with seeded, isolated state"]
+    Runner --> Results["Normalized results.json"]
+    Runner --> Evidence["Failure diagnostics when available"]
+    Results --> Report["HTML report"]
+    Results --> Summary["GitHub Actions summary"]
+    Results --> Optional["Optional PDF and Teams payload"]
+    Evidence --> Report
+```
 
 ### Run the checks
 
@@ -112,6 +152,18 @@ Codex identified the renamed status-filter selector and proposed one locator edi
 An independent rerun passed all 14 scenarios. A separate read-only investigation
 identified an application persistence defect and left the test expectations intact.
 
+```mermaid
+flowchart TB
+    Failure["Failed Cypress run"] --> Context["Approved failure evidence"]
+    Context --> Codex["Operator starts Codex CLI"]
+    Codex --> Decision{"Evidence supports a selector change?"}
+    Decision -->|No| Record["Document findings for investigation"]
+    Decision -->|Yes| Proposal["Uncommitted test edit in a disposable checkout"]
+    Proposal --> Review["Human reviews the diff"]
+    Review --> Validation["Operator reruns Cypress independently"]
+    Validation --> Adoption["Human decides whether to adopt the change"]
+```
+
 | Workflow | Status |
 | --- | --- |
 | [Codex handoff and human review](docs/AI_MAINTENANCE.md#coding-agent-proof-of-concept) | Experimental. Requires a signed-in Codex CLI and an approved run archive. Verified locally on synthetic fixtures. |
@@ -129,3 +181,24 @@ Follow the [reproduction, scope, and validation guide](docs/AI_MAINTENANCE.md)
 for the remaining steps. The standard CI run uses offline diagnostics. Codex
 has no automatic PR or merge workflow. Use trusted, synthetic evidence and
 review the generated prompt before sending it to a model provider.
+
+## Consulting services
+
+**QA Automation Launch · from £4,950**
+
+Establish Cypress and Cucumber coverage for business-critical journeys, with
+repeatable test data, CI checks, readable reports, and a team handover.
+The indicative scope is 20–30 standard-complexity scenarios over 2–3 weeks,
+subject to discovery, system access, and project readiness.
+
+**AI-Assisted Test Maintenance Pilot · from £2,500**
+
+Trial coding-agent support for failure investigation and reviewable test-change
+proposals in an existing automation workflow. The indicative duration is 1–2
+weeks, depending on the environment and approvals. The pilot includes human
+review and independent test validation.
+
+Pricing, scope, and timing are indicative. Discovery confirms deliverables,
+access, AI-provider approvals, and any recurring model costs.
+
+[Discuss a project on LinkedIn](https://www.linkedin.com/in/kate-frishman/)

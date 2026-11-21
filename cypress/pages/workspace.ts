@@ -1,18 +1,23 @@
-export const projectList = () => cy.get('#projects');
-export const dialog = () => cy.get('#editor').should('be.visible');
-export const taskList = () => cy.get('#tasks');
+export const testId = (name: string) => `[data-testid="${name}"]`;
+export const byTestId = (name: string) => cy.get(testId(name));
+export const exactText = (text: string) =>
+  new RegExp('^' + Cypress._.escapeRegExp(text) + '$');
+
+export const projectList = () => byTestId('projects');
+export const dialog = () => byTestId('editor');
+export const taskList = () => byTestId('tasks');
 export const taskRow = (title: string) =>
-  cy
-    .contains('[data-testid="task-row"] button', title)
-    .closest('[data-testid="task-row"]');
+  taskList()
+    .contains(testId('task-title'), exactText(title))
+    .closest(testId('task-row'));
 
 export function openWorkspace() {
   cy.visit('/');
-  cy.get('#workspace').should('be.visible');
+  byTestId('workspace').should('be.visible');
 }
 
 export function submitNew(kind: 'project' | 'task', title: string) {
-  cy.get('#new-' + kind).click();
-  dialog().find('[name=title]').type(title);
-  dialog().find('#save').click();
+  byTestId('new-' + kind).click();
+  dialog().find(testId('editor-title-input')).type(title);
+  dialog().find(testId('save')).click();
 }

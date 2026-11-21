@@ -59,12 +59,14 @@ function renderTasks() {
     row.dataset.testid = 'task-row';
     const details = make('div', '', 'task-details');
     const title = make('button', task.title, 'task-title');
+    title.dataset.testid = 'task-title';
     title.type = 'button';
     title.setAttribute('aria-label', 'Edit ' + task.title);
     title.addEventListener('click', () => openEditor('task', task));
     details.append(title);
     if (task.description) details.append(make('p', task.description));
     const status = make('select', '', 'status');
+    status.dataset.testid = 'task-status';
     status.dataset.status = task.status;
     status.setAttribute('aria-label', 'Status for ' + task.title);
     status.append(...workspace.statuses.map(value => new Option(value)));
@@ -98,6 +100,7 @@ function render() {
   const project = workspace.projects.find(item => item.id === projectId);
   $('#projects').replaceChildren(...workspace.projects.map(item => {
     const button = make('button', item.name, 'project');
+    button.dataset.testid = 'project-item';
     if (item.id === projectId) button.setAttribute('aria-current', 'true');
     button.addEventListener('click', () => {
       projectId = item.id;

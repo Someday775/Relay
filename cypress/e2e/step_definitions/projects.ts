@@ -1,5 +1,12 @@
 import { When, Then } from '@badeball/cypress-cucumber-preprocessor';
-import { dialog, projectList, submitNew } from '../../pages/workspace.js';
+import {
+  byTestId,
+  dialog,
+  exactText,
+  projectList,
+  submitNew,
+  testId,
+} from '../../pages/workspace.js';
 
 When('I create a project called {string}', (title: string) =>
   submitNew('project', title),
@@ -8,8 +15,10 @@ When('I submit a project name with only spaces', () =>
   submitNew('project', '   '),
 );
 Then('{string} is selected and has no tasks', (title: string) => {
-  projectList().find('[aria-current=true]').should('have.text', title);
-  cy.get('#empty').should('contain.text', 'No tasks yet.');
+  projectList()
+    .find(testId('project-item') + '[aria-current=true]')
+    .should('have.text', title);
+  byTestId('empty').should('contain.text', 'No tasks yet.');
 });
 Then('the editor asks for a project name', () => {
   dialog()
@@ -31,5 +40,5 @@ Then('a request to update its task is rejected', () =>
     .should('equal', 404),
 );
 When('I select {string}', (title: string) =>
-  projectList().contains('button', title).click(),
+  projectList().contains(testId('project-item'), exactText(title)).click(),
 );

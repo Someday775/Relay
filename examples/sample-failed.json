@@ -1,0 +1,62 @@
+{
+  "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+  "type": "AdaptiveCard",
+  "version": "1.2",
+  "body": [
+    {
+      "type": "TextBlock",
+      "text": "Relay · FAILED",
+      "wrap": true,
+      "weight": "Bolder",
+      "size": "Large",
+      "color": "Attention"
+    },
+    {
+      "type": "TextBlock",
+      "text": "11 total · 10 passed · 1 failed · 0 skipped",
+      "wrap": true
+    },
+    {
+      "type": "TextBlock",
+      "text": "Illustrative demo · sample-failed · 14.9 s · 2026-11-21T16:00:00.000Z",
+      "wrap": true,
+      "isSubtle": true
+    },
+    {
+      "type": "TextBlock",
+      "text": "PDF: configured report storage. Storage permissions apply.",
+      "wrap": true
+    },
+    {
+      "type": "TextBlock",
+      "text": "A completed task stays done after reload — Expected status \"Done\" but received \"To do\".",
+      "wrap": true
+    },
+    {
+      "type": "Container",
+      "id": "failure-details",
+      "isVisible": false,
+      "items": [
+        {
+          "type": "TextBlock",
+          "text": "Task management / A completed task stays done after reload\n\nThen \"Check handover\" is still \"Done\" after reload\n\nExpected status \"Done\" but received \"To do\".",
+          "wrap": true
+        }
+      ]
+    }
+  ],
+  "actions": [
+    {
+      "type": "Action.ToggleVisibility",
+      "title": "Toggle failure details",
+      "targetElements": [
+        "failure-details"
+      ]
+    },
+    {
+      "type": "Action.OpenUrl",
+      "title": "Open PDF report",
+      "url": "https://example.com/relay/reports/sample-failed.pdf"
+    }
+  ]
+}

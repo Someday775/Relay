@@ -99,12 +99,10 @@ export async function renderPdf(report, directory) {
   pdf.moveDown(0.7).fillColor('#182844').font('Helvetica').fontSize(11);
   for (const [key, value] of fields(report)) pdf.text(key + ': ' + value);
   if (report.runUrl)
-    pdf
-      .moveDown(0.4)
-      .text('GitHub Actions run (requires access)', {
-        link: report.runUrl,
-        underline: true,
-      });
+    pdf.moveDown(0.4).text('GitHub Actions run (requires access)', {
+      link: report.runUrl,
+      underline: true,
+    });
   if (!report.scenarios.length)
     pdf
       .moveDown()

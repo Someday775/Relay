@@ -1,0 +1,38 @@
+{
+  "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+  "type": "AdaptiveCard",
+  "version": "1.2",
+  "body": [
+    {
+      "type": "TextBlock",
+      "text": "Relay · PASSED",
+      "wrap": true,
+      "weight": "Bolder",
+      "size": "Large",
+      "color": "Good"
+    },
+    {
+      "type": "TextBlock",
+      "text": "11 total · 11 passed · 0 failed · 0 skipped",
+      "wrap": true
+    },
+    {
+      "type": "TextBlock",
+      "text": "Illustrative demo · sample-passed · 14.9 s · 2026-11-21T16:00:00.000Z",
+      "wrap": true,
+      "isSubtle": true
+    },
+    {
+      "type": "TextBlock",
+      "text": "PDF: configured report storage. Storage permissions apply.",
+      "wrap": true
+    }
+  ],
+  "actions": [
+    {
+      "type": "Action.OpenUrl",
+      "title": "Open PDF report",
+      "url": "https://example.com/relay/reports/sample-passed.pdf"
+    }
+  ]
+}

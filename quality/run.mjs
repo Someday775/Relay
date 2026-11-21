@@ -4,7 +4,7 @@ import { createWriteStream } from 'node:fs';
 import { appendFile, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { finished } from 'node:stream/promises';
-import cucumberReporter from 'multiple-cucumber-html-reporter';
+import { generate } from 'multiple-cucumber-html-reporter';
 import { analyze } from './analyze.mjs';
 import { renderHtml, renderPdf } from './render.mjs';
 import { normalize, summary } from './results.mjs';
@@ -120,7 +120,7 @@ if (features.length) {
       join(legacyData, 'cucumber.json'),
       JSON.stringify(features),
     );
-    cucumberReporter.generate({
+    generate({
       jsonDir: legacyData,
       reportPath: join(directory, 'cucumber'),
       reportName: 'Relay Cucumber scenarios',

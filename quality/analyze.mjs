@@ -10,7 +10,11 @@ function classify(scenario) {
       'Check server readiness, browser availability and Cypress logs.',
     ];
   }
-  if (/undefined|missing step definition|ambiguous/i.test(error)) {
+  if (
+    /undefined|missing step definition|step implementation missing|ambiguous/i.test(
+      error,
+    )
+  ) {
     return [
       'Step binding',
       'Compare the Gherkin phrase with the registered step expression.',

@@ -141,3 +141,14 @@ The model is optional and advisory. The analyzer neither executes its output nor
 tests. Use an approved local model or review the diagnostic data before connecting an
 external provider. In the absence of an adapter, or if it times out, rules-based findings
 remain available.
+
+For an example using a locally running [Ollama](https://docs.ollama.com/api/generate)
+server, set `RELAY_OLLAMA_MODEL` to the name of an already installed local model and run:
+
+```sh
+RELAY_OLLAMA_MODEL=your-local-model RELAY_MODEL_COMMAND=./quality/ollama.mjs \
+  node quality/analyze.mjs path/to/results.json
+```
+
+The adapter sends its request to loopback. The core demo and GitHub Actions workflow use
+the offline rules unless you configure an adapter.
